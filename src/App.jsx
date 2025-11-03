@@ -18,9 +18,7 @@ import './App.css'
 import 'react-tabs/style/react-tabs.css'
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('app_authenticated') === 'true'
-  })
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [passwordError, setPasswordError] = useState('')
   const [entries, setEntries] = useState([])
@@ -40,7 +38,6 @@ function App() {
     e.preventDefault()
     if (password.toLowerCase() === 'racional') {
       setIsAuthenticated(true)
-      localStorage.setItem('app_authenticated', 'true')
       setPasswordError('')
       setPassword('')
     } else {
