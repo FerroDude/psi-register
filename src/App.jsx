@@ -294,7 +294,6 @@ function App() {
     return (
       <div className="login-screen">
         <div className="login-container">
-          <h1>Registo</h1>
           <form onSubmit={handlePasswordSubmit} className="login-form">
             <div className="login-form-group">
               <label htmlFor="password">Password</label>

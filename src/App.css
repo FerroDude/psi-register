@@ -3,6 +3,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  height: 100vh;
   background: #242424;
   padding: 2rem;
 }
@@ -15,14 +16,6 @@
   max-width: 400px;
   width: 100%;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
-.login-container h1 {
-  text-align: center;
-  color: #646cff;
-  margin-top: 0;
-  margin-bottom: 2rem;
-  font-size: 2rem;
 }
 
 .login-form {
