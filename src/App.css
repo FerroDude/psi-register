@@ -144,6 +144,14 @@ form {
 
 .form-group-range {
   grid-column: span 1;
+  width: 100%;
+  max-width: 200px;
+}
+
+@media (min-width: 769px) {
+  .form-group-range {
+    max-width: 200px;
+  }
 }
 
 .form-group label {

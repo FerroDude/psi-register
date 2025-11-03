@@ -12,6 +12,8 @@ import {
   ResponsiveContainer,
   Cell
 } from 'recharts'
+import { collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { db, isFirebaseConfigured } from './firebase'
 import './App.css'
 import 'react-tabs/style/react-tabs.css'
 
@@ -30,26 +32,89 @@ function App() {
   })
 
   useEffect(() => {
-    const stored = localStorage.getItem('entries')
-    if (stored) {
-      setEntries(JSON.parse(stored))
+    let unsubscribe
+    
+    if (isFirebaseConfigured && db) {
+      // Use Firebase real-time sync
+      try {
+        const q = query(collection(db, 'entries'), orderBy('dataHora', 'desc'))
+        unsubscribe = onSnapshot(
+          q,
+          (querySnapshot) => {
+            const entriesData = []
+            querySnapshot.forEach((doc) => {
+              entriesData.push({ id: doc.id, ...doc.data() })
+            })
+            setEntries(entriesData)
+            // Also save to localStorage as backup
+            localStorage.setItem('entries', JSON.stringify(entriesData))
+          },
+          (error) => {
+            console.error('Error in real-time sync:', error)
+            // Fallback to localStorage
+            const stored = localStorage.getItem('entries')
+            if (stored) {
+              setEntries(JSON.parse(stored))
+            }
+          }
+        )
+      } catch (error) {
+        console.error('Error setting up Firebase:', error)
+        // Fallback to localStorage
+        const stored = localStorage.getItem('entries')
+        if (stored) {
+          setEntries(JSON.parse(stored))
+        }
+      }
+    } else {
+      // Firebase not configured, use localStorage
+      const stored = localStorage.getItem('entries')
+      if (stored) {
+        setEntries(JSON.parse(stored))
+      }
+    }
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
     }
   }, [])
 
-  useEffect(() => {
-    if (entries.length > 0) {
-      localStorage.setItem('entries', JSON.stringify(entries))
-    }
-  }, [entries])
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const newEntry = {
-      id: Date.now(),
       ...formData,
       dataHora: formData.dataHora || new Date().toISOString().slice(0, 16)
     }
-    setEntries([newEntry, ...entries])
+    
+    if (isFirebaseConfigured && db) {
+      try {
+        // Save to Firebase
+        await addDoc(collection(db, 'entries'), newEntry)
+        // Note: Real-time listener will update entries automatically
+      } catch (error) {
+        console.error('Error adding entry to Firebase:', error)
+        // Fallback: save locally
+        const localEntry = {
+          id: Date.now(),
+          ...newEntry
+        }
+        const updatedEntries = [localEntry, ...entries]
+        setEntries(updatedEntries)
+        localStorage.setItem('entries', JSON.stringify(updatedEntries))
+      }
+    } else {
+      // Firebase not configured, use localStorage
+      const localEntry = {
+        id: Date.now(),
+        ...newEntry
+      }
+      const updatedEntries = [localEntry, ...entries]
+      setEntries(updatedEntries)
+      localStorage.setItem('entries', JSON.stringify(updatedEntries))
+    }
+    
     setFormData({
       dataHora: '',
       situacao: '',
@@ -70,8 +135,25 @@ function App() {
     }))
   }
 
-  const deleteEntry = (id) => {
-    setEntries(entries.filter(entry => entry.id !== id))
+  const deleteEntry = async (id) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        // Delete from Firebase
+        await deleteDoc(doc(db, 'entries', id))
+        // Note: Real-time listener will update entries automatically
+      } catch (error) {
+        console.error('Error deleting entry from Firebase:', error)
+        // Fallback: delete locally
+        const updatedEntries = entries.filter(entry => entry.id !== id)
+        setEntries(updatedEntries)
+        localStorage.setItem('entries', JSON.stringify(updatedEntries))
+      }
+    } else {
+      // Firebase not configured, use localStorage
+      const updatedEntries = entries.filter(entry => entry.id !== id)
+      setEntries(updatedEntries)
+      localStorage.setItem('entries', JSON.stringify(updatedEntries))
+    }
   }
 
   const filterEntriesByPeriod = (entriesToFilter) => {
