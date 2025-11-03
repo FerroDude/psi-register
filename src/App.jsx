@@ -18,6 +18,11 @@ import './App.css'
 import 'react-tabs/style/react-tabs.css'
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('app_authenticated') === 'true'
+  })
+  const [password, setPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
   const [entries, setEntries] = useState([])
   const [filterPeriod, setFilterPeriod] = useState('all')
   const [formData, setFormData] = useState({
@@ -31,12 +36,26 @@ function App() {
     intensidade: 50
   })
 
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault()
+    if (password.toLowerCase() === 'racional') {
+      setIsAuthenticated(true)
+      localStorage.setItem('app_authenticated', 'true')
+      setPasswordError('')
+      setPassword('')
+    } else {
+      setPasswordError('Palavra incorreta')
+      setPassword('')
+    }
+  }
+
   useEffect(() => {
     let unsubscribe
     
     if (isFirebaseConfigured && db) {
       // Use Firebase real-time sync
       try {
+        // First try with orderBy, if it fails (no index), fall back to without orderBy
         const q = query(collection(db, 'entries'), orderBy('dataHora', 'desc'))
         unsubscribe = onSnapshot(
           q,
@@ -45,17 +64,37 @@ function App() {
             querySnapshot.forEach((doc) => {
               entriesData.push({ id: doc.id, ...doc.data() })
             })
+            // Sort manually in case orderBy didn't work
+            entriesData.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora))
             setEntries(entriesData)
             // Also save to localStorage as backup
             localStorage.setItem('entries', JSON.stringify(entriesData))
           },
           (error) => {
-            console.error('Error in real-time sync:', error)
-            // Fallback to localStorage
-            const stored = localStorage.getItem('entries')
-            if (stored) {
-              setEntries(JSON.parse(stored))
-            }
+            console.error('Error in real-time sync with orderBy:', error)
+            // Try without orderBy
+            const qSimple = collection(db, 'entries')
+            unsubscribe = onSnapshot(
+              qSimple,
+              (querySnapshot) => {
+                const entriesData = []
+                querySnapshot.forEach((doc) => {
+                  entriesData.push({ id: doc.id, ...doc.data() })
+                })
+                // Sort manually
+                entriesData.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora))
+                setEntries(entriesData)
+                localStorage.setItem('entries', JSON.stringify(entriesData))
+              },
+              (error2) => {
+                console.error('Error in real-time sync:', error2)
+                // Fallback to localStorage
+                const stored = localStorage.getItem('entries')
+                if (stored) {
+                  setEntries(JSON.parse(stored))
+                }
+              }
+            )
           }
         )
       } catch (error) {
@@ -67,6 +106,7 @@ function App() {
         }
       }
     } else {
+      console.log('Firebase not configured, using localStorage')
       // Firebase not configured, use localStorage
       const stored = localStorage.getItem('entries')
       if (stored) {
@@ -91,10 +131,13 @@ function App() {
     if (isFirebaseConfigured && db) {
       try {
         // Save to Firebase
-        await addDoc(collection(db, 'entries'), newEntry)
+        console.log('Saving to Firebase:', newEntry)
+        const docRef = await addDoc(collection(db, 'entries'), newEntry)
+        console.log('Entry saved with ID:', docRef.id)
         // Note: Real-time listener will update entries automatically
       } catch (error) {
         console.error('Error adding entry to Firebase:', error)
+        console.error('Error details:', error.code, error.message)
         // Fallback: save locally
         const localEntry = {
           id: Date.now(),
@@ -105,6 +148,7 @@ function App() {
         localStorage.setItem('entries', JSON.stringify(updatedEntries))
       }
     } else {
+      console.log('Firebase not configured, saving to localStorage')
       // Firebase not configured, use localStorage
       const localEntry = {
         id: Date.now(),
@@ -245,6 +289,36 @@ function App() {
       }))
   }, [filteredEntries])
 
+
+  if (!isAuthenticated) {
+    return (
+      <div className="login-screen">
+        <div className="login-container">
+          <h1>Registo</h1>
+          <form onSubmit={handlePasswordSubmit} className="login-form">
+            <div className="login-form-group">
+              <label htmlFor="password">Password</label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setPasswordError('')
+                }}
+                placeholder="Digite a palavra"
+                autoFocus
+              />
+              {passwordError && <p className="password-error">{passwordError}</p>}
+            </div>
+            <button type="submit" className="login-btn">
+              Entrar
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="app">
