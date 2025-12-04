@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
-import * as XLSX from 'xlsx'
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
+import { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import {
   BarChart,
   Bar,
@@ -10,19 +10,27 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Cell
-} from 'recharts'
-import { collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot } from 'firebase/firestore'
-import { db, isFirebaseConfigured } from './firebase'
-import './App.css'
-import 'react-tabs/style/react-tabs.css'
+  Cell,
+} from 'recharts';
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  onSnapshot,
+} from 'firebase/firestore';
+import { db, isFirebaseConfigured } from './firebase';
+import './App.css';
+import 'react-tabs/style/react-tabs.css';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [password, setPassword] = useState('')
-  const [passwordError, setPasswordError] = useState('')
-  const [entries, setEntries] = useState([])
-  const [filterPeriod, setFilterPeriod] = useState('all')
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [entries, setEntries] = useState([]);
+  const [filterPeriod, setFilterPeriod] = useState('all');
   const [formData, setFormData] = useState({
     dataHora: '',
     situacao: '',
@@ -31,131 +39,135 @@ function App() {
     sintomasFisicos: '',
     estrategia: '',
     eficacia: 50,
-    intensidade: 50
-  })
+    intensidade: 50,
+  });
 
   const handlePasswordSubmit = (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (password.toLowerCase() === 'racional') {
-      setIsAuthenticated(true)
-      setPasswordError('')
-      setPassword('')
+      setIsAuthenticated(true);
+      setPasswordError('');
+      setPassword('');
     } else {
-      setPasswordError('Palavra incorreta')
-      setPassword('')
+      setPasswordError('Palavra incorreta');
+      setPassword('');
     }
-  }
+  };
 
   useEffect(() => {
-    let unsubscribe
-    
+    let unsubscribe;
+
     if (isFirebaseConfigured && db) {
       // Use Firebase real-time sync
       try {
         // First try with orderBy, if it fails (no index), fall back to without orderBy
-        const q = query(collection(db, 'entries'), orderBy('dataHora', 'desc'))
+        const q = query(collection(db, 'entries'), orderBy('dataHora', 'desc'));
         unsubscribe = onSnapshot(
           q,
           (querySnapshot) => {
-            const entriesData = []
+            const entriesData = [];
             querySnapshot.forEach((doc) => {
-              entriesData.push({ id: doc.id, ...doc.data() })
-            })
+              entriesData.push({ id: doc.id, ...doc.data() });
+            });
             // Sort manually in case orderBy didn't work
-            entriesData.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora))
-            setEntries(entriesData)
+            entriesData.sort(
+              (a, b) => new Date(b.dataHora) - new Date(a.dataHora)
+            );
+            setEntries(entriesData);
             // Also save to localStorage as backup
-            localStorage.setItem('entries', JSON.stringify(entriesData))
+            localStorage.setItem('entries', JSON.stringify(entriesData));
           },
           (error) => {
-            console.error('Error in real-time sync with orderBy:', error)
+            console.error('Error in real-time sync with orderBy:', error);
             // Try without orderBy
-            const qSimple = collection(db, 'entries')
+            const qSimple = collection(db, 'entries');
             unsubscribe = onSnapshot(
               qSimple,
               (querySnapshot) => {
-                const entriesData = []
+                const entriesData = [];
                 querySnapshot.forEach((doc) => {
-                  entriesData.push({ id: doc.id, ...doc.data() })
-                })
+                  entriesData.push({ id: doc.id, ...doc.data() });
+                });
                 // Sort manually
-                entriesData.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora))
-                setEntries(entriesData)
-                localStorage.setItem('entries', JSON.stringify(entriesData))
+                entriesData.sort(
+                  (a, b) => new Date(b.dataHora) - new Date(a.dataHora)
+                );
+                setEntries(entriesData);
+                localStorage.setItem('entries', JSON.stringify(entriesData));
               },
               (error2) => {
-                console.error('Error in real-time sync:', error2)
+                console.error('Error in real-time sync:', error2);
                 // Fallback to localStorage
-                const stored = localStorage.getItem('entries')
+                const stored = localStorage.getItem('entries');
                 if (stored) {
-                  setEntries(JSON.parse(stored))
+                  setEntries(JSON.parse(stored));
                 }
               }
-            )
+            );
           }
-        )
+        );
       } catch (error) {
-        console.error('Error setting up Firebase:', error)
+        console.error('Error setting up Firebase:', error);
         // Fallback to localStorage
-        const stored = localStorage.getItem('entries')
+        const stored = localStorage.getItem('entries');
         if (stored) {
-          setEntries(JSON.parse(stored))
+          setEntries(JSON.parse(stored));
         }
       }
     } else {
-      console.log('Firebase not configured, using localStorage')
+      console.log('Firebase not configured, using localStorage');
       // Firebase not configured, use localStorage
-      const stored = localStorage.getItem('entries')
+      const stored = localStorage.getItem('entries');
       if (stored) {
-        setEntries(JSON.parse(stored))
+        setEntries(JSON.parse(stored));
       }
     }
-    
+
     return () => {
       if (unsubscribe) {
-        unsubscribe()
+        unsubscribe();
       }
-    }
-  }, [])
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     const newEntry = {
       ...formData,
-      dataHora: formData.dataHora || new Date().toISOString().slice(0, 16)
-    }
-    
+      dataHora: formData.dataHora || new Date().toISOString().slice(0, 16),
+    };
+
     if (isFirebaseConfigured && db) {
       try {
         // Save to Firebase
-        console.log('Saving to Firebase:', newEntry)
-        const docRef = await addDoc(collection(db, 'entries'), newEntry)
-        console.log('Entry saved with ID:', docRef.id)
+        console.log('Saving to Firebase:', newEntry);
+        const docRef = await addDoc(collection(db, 'entries'), newEntry);
+        console.log('Entry saved with ID:', docRef.id);
         // Note: Real-time listener will update entries automatically
       } catch (error) {
-        console.error('Error adding entry to Firebase:', error)
-        console.error('Error details:', error.code, error.message)
+        console.error('Error adding entry to Firebase:', error);
+        console.error('Error details:', error.code, error.message);
         // Fallback: save locally
         const localEntry = {
           id: Date.now(),
-          ...newEntry
-        }
-        const updatedEntries = [localEntry, ...entries]
-        setEntries(updatedEntries)
-        localStorage.setItem('entries', JSON.stringify(updatedEntries))
+          ...newEntry,
+        };
+        const updatedEntries = [localEntry, ...entries];
+        setEntries(updatedEntries);
+        localStorage.setItem('entries', JSON.stringify(updatedEntries));
       }
     } else {
-      console.log('Firebase not configured, saving to localStorage')
+      console.log('Firebase not configured, saving to localStorage');
       // Firebase not configured, use localStorage
       const localEntry = {
         id: Date.now(),
-        ...newEntry
-      }
-      const updatedEntries = [localEntry, ...entries]
-      setEntries(updatedEntries)
-      localStorage.setItem('entries', JSON.stringify(updatedEntries))
+        ...newEntry,
+      };
+      const updatedEntries = [localEntry, ...entries];
+      setEntries(updatedEntries);
+      localStorage.setItem('entries', JSON.stringify(updatedEntries));
     }
-    
+
     setFormData({
       dataHora: '',
       situacao: '',
@@ -164,81 +176,88 @@ function App() {
       sintomasFisicos: '',
       estrategia: '',
       eficacia: 50,
-      intensidade: 50
-    })
-  }
+      intensidade: 50,
+    });
+  };
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
+    const { name, value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: (name === 'eficacia' || name === 'intensidade') ? parseInt(value) || 0 : value
-    }))
-  }
+      [name]:
+        name === 'eficacia' || name === 'intensidade'
+          ? parseInt(value) || 0
+          : value,
+    }));
+  };
 
   const deleteEntry = async (id) => {
     if (isFirebaseConfigured && db) {
       try {
         // Delete from Firebase
-        await deleteDoc(doc(db, 'entries', id))
+        await deleteDoc(doc(db, 'entries', id));
         // Note: Real-time listener will update entries automatically
       } catch (error) {
-        console.error('Error deleting entry from Firebase:', error)
+        console.error('Error deleting entry from Firebase:', error);
         // Fallback: delete locally
-        const updatedEntries = entries.filter(entry => entry.id !== id)
-        setEntries(updatedEntries)
-        localStorage.setItem('entries', JSON.stringify(updatedEntries))
+        const updatedEntries = entries.filter((entry) => entry.id !== id);
+        setEntries(updatedEntries);
+        localStorage.setItem('entries', JSON.stringify(updatedEntries));
       }
     } else {
       // Firebase not configured, use localStorage
-      const updatedEntries = entries.filter(entry => entry.id !== id)
-      setEntries(updatedEntries)
-      localStorage.setItem('entries', JSON.stringify(updatedEntries))
+      const updatedEntries = entries.filter((entry) => entry.id !== id);
+      setEntries(updatedEntries);
+      localStorage.setItem('entries', JSON.stringify(updatedEntries));
     }
-  }
+  };
 
   const filterEntriesByPeriod = (entriesToFilter) => {
-    const now = new Date()
-    const entryDate = (entry) => new Date(entry.dataHora)
+    const now = new Date();
+    const entryDate = (entry) => new Date(entry.dataHora);
 
     switch (filterPeriod) {
       case 'day':
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        return entriesToFilter.filter(entry => {
-          const date = entryDate(entry)
-          return date >= today
-        })
+        const today = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate()
+        );
+        return entriesToFilter.filter((entry) => {
+          const date = entryDate(entry);
+          return date >= today;
+        });
       case 'week':
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        return entriesToFilter.filter(entry => entryDate(entry) >= weekAgo)
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return entriesToFilter.filter((entry) => entryDate(entry) >= weekAgo);
       case 'month':
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        return entriesToFilter.filter(entry => entryDate(entry) >= monthAgo)
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return entriesToFilter.filter((entry) => entryDate(entry) >= monthAgo);
       default:
-        return entriesToFilter
+        return entriesToFilter;
     }
-  }
+  };
 
   const filteredEntries = useMemo(() => {
-    return filterEntriesByPeriod(entries)
-  }, [entries, filterPeriod])
+    return filterEntriesByPeriod(entries);
+  }, [entries, filterPeriod]);
 
   const exportToExcel = () => {
-    const worksheetData = filteredEntries.map(entry => ({
+    const worksheetData = filteredEntries.map((entry) => ({
       'Data/Hora': new Date(entry.dataHora).toLocaleString('pt-PT'),
-      'Situação': entry.situacao || '',
-      'Pensamento': entry.pensamento || '',
-      'Emoção': entry.emocao || '',
+      Situação: entry.situacao || '',
+      Pensamento: entry.pensamento || '',
+      Emoção: entry.emocao || '',
       'Sintomas Físicos': entry.sintomasFisicos || '',
-      'Estratégia': entry.estrategia || '',
-      'Eficácia': entry.eficacia,
-      'Intensidade': entry.intensidade || 0
-    }))
+      Estratégia: entry.estrategia || '',
+      Eficácia: entry.eficacia,
+      Intensidade: entry.intensidade || 0,
+    }));
 
-    const ws = XLSX.utils.json_to_sheet(worksheetData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Registos')
-    
+    const ws = XLSX.utils.json_to_sheet(worksheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Registos');
+
     const wscols = [
       { wch: 20 },
       { wch: 30 },
@@ -247,45 +266,85 @@ function App() {
       { wch: 30 },
       { wch: 30 },
       { wch: 10 },
-      { wch: 10 }
-    ]
-    ws['!cols'] = wscols
+      { wch: 10 },
+    ];
+    ws['!cols'] = wscols;
 
-    XLSX.writeFile(wb, `registos_${new Date().toISOString().split('T')[0]}.xlsx`)
-  }
+    XLSX.writeFile(
+      wb,
+      `registos_${new Date().toISOString().split('T')[0]}.xlsx`
+    );
+  };
 
   const sortedEntries = useMemo(() => {
     return [...filteredEntries].sort((a, b) => {
-      return new Date(b.dataHora) - new Date(a.dataHora)
-    })
-  }, [filteredEntries])
+      return new Date(b.dataHora) - new Date(a.dataHora);
+    });
+  }, [filteredEntries]);
+
+  // Helper function to get the start of the week (Monday)
+  const getWeekStart = (date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    return new Date(d.setDate(diff));
+  };
+
+  // Group entries by week
+  const entriesGroupedByWeek = useMemo(() => {
+    const groups = {};
+
+    sortedEntries.forEach((entry) => {
+      const entryDate = new Date(entry.dataHora);
+      const weekStart = getWeekStart(entryDate);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      // Create a unique key for the week
+      const weekKey = weekStart.toISOString().split('T')[0];
+
+      if (!groups[weekKey]) {
+        groups[weekKey] = {
+          weekStart: weekStart,
+          weekEnd: weekEnd,
+          entries: [],
+        };
+      }
+      groups[weekKey].entries.push(entry);
+    });
+
+    // Convert to array and sort by week (most recent first)
+    return Object.values(groups).sort((a, b) => b.weekStart - a.weekStart);
+  }, [sortedEntries]);
 
   const chartDataEntriesPerDay = useMemo(() => {
-    const dailyMap = {}
-    
-    filteredEntries.forEach(entry => {
+    const dailyMap = {};
+
+    filteredEntries.forEach((entry) => {
       const date = new Date(entry.dataHora).toLocaleDateString('pt-PT', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
-      })
-      
+        year: 'numeric',
+      });
+
       if (!dailyMap[date]) {
-        dailyMap[date] = 0
+        dailyMap[date] = 0;
       }
-      dailyMap[date]++
-    })
+      dailyMap[date]++;
+    });
 
     return Object.keys(dailyMap)
       .sort((a, b) => {
-        return new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-'))
+        return (
+          new Date(a.split('/').reverse().join('-')) -
+          new Date(b.split('/').reverse().join('-'))
+        );
       })
-      .map(date => ({
+      .map((date) => ({
         date,
-        quantidade: dailyMap[date]
-      }))
-  }, [filteredEntries])
-
+        quantidade: dailyMap[date],
+      }));
+  }, [filteredEntries]);
 
   if (!isAuthenticated) {
     return (
@@ -299,13 +358,15 @@ function App() {
                 id="password"
                 value={password}
                 onChange={(e) => {
-                  setPassword(e.target.value)
-                  setPasswordError('')
+                  setPassword(e.target.value);
+                  setPasswordError('');
                 }}
                 placeholder="Digite a palavra"
                 autoFocus
               />
-              {passwordError && <p className="password-error">{passwordError}</p>}
+              {passwordError && (
+                <p className="password-error">{passwordError}</p>
+              )}
             </div>
             <button type="submit" className="login-btn">
               Entrar
@@ -313,7 +374,7 @@ function App() {
           </form>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -453,52 +514,95 @@ function App() {
             </section>
 
             <section className="table-section">
-              <h2>Dados ({filteredEntries.length} {filteredEntries.length === 1 ? 'entrada' : 'entradas'})</h2>
+              <h2>
+                Dados ({filteredEntries.length}{' '}
+                {filteredEntries.length === 1 ? 'entrada' : 'entradas'})
+              </h2>
               {filteredEntries.length === 0 ? (
-                <p className="empty-message">Ainda não há entradas registadas para este período.</p>
+                <p className="empty-message">
+                  Ainda não há entradas registadas para este período.
+                </p>
               ) : (
-                <div className="table-wrapper">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Data/Hora</th>
-                        <th>Situação</th>
-                        <th>Pensamento</th>
-                        <th>Emoção</th>
-                        <th>Sintomas Físicos</th>
-                        <th>Estratégia</th>
-                        <th>Eficácia</th>
-                        <th>Intensidade</th>
-                        <th>Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedEntries.map(entry => {
-                        const dateTime = new Date(entry.dataHora).toLocaleString('pt-PT')
-                        return (
-                          <tr key={entry.id}>
-                            <td>{dateTime}</td>
-                            <td>{entry.situacao || '-'}</td>
-                            <td>{entry.pensamento || '-'}</td>
-                            <td>{entry.emocao || '-'}</td>
-                            <td>{entry.sintomasFisicos || '-'}</td>
-                            <td>{entry.estrategia || '-'}</td>
-                            <td>{entry.eficacia}%</td>
-                            <td>{(entry.intensidade || 0)}%</td>
-                            <td>
-                              <button
-                                className="delete-btn-small"
-                                onClick={() => deleteEntry(entry.id)}
-                                aria-label="Eliminar"
-                              >
-                                ×
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                <div className="weeks-container">
+                  {entriesGroupedByWeek.map((weekGroup, weekIndex) => {
+                    const weekStartStr = weekGroup.weekStart.toLocaleDateString(
+                      'pt-PT',
+                      {
+                        day: '2-digit',
+                        month: 'short',
+                      }
+                    );
+                    const weekEndStr = weekGroup.weekEnd.toLocaleDateString(
+                      'pt-PT',
+                      {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      }
+                    );
+
+                    return (
+                      <div key={weekIndex} className="week-group">
+                        <div className="week-header">
+                          <span className="week-label">Semana</span>
+                          <span className="week-dates">
+                            {weekStartStr} — {weekEndStr}
+                          </span>
+                          <span className="week-count">
+                            {weekGroup.entries.length}{' '}
+                            {weekGroup.entries.length === 1
+                              ? 'entrada'
+                              : 'entradas'}
+                          </span>
+                        </div>
+                        <div className="table-wrapper">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>Data/Hora</th>
+                                <th>Situação</th>
+                                <th>Pensamento</th>
+                                <th>Emoção</th>
+                                <th>Sintomas Físicos</th>
+                                <th>Estratégia</th>
+                                <th>Eficácia</th>
+                                <th>Intensidade</th>
+                                <th>Ação</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {weekGroup.entries.map((entry) => {
+                                const dateTime = new Date(
+                                  entry.dataHora
+                                ).toLocaleString('pt-PT');
+                                return (
+                                  <tr key={entry.id}>
+                                    <td>{dateTime}</td>
+                                    <td>{entry.situacao || '-'}</td>
+                                    <td>{entry.pensamento || '-'}</td>
+                                    <td>{entry.emocao || '-'}</td>
+                                    <td>{entry.sintomasFisicos || '-'}</td>
+                                    <td>{entry.estrategia || '-'}</td>
+                                    <td>{entry.eficacia}%</td>
+                                    <td>{entry.intensidade || 0}%</td>
+                                    <td>
+                                      <button
+                                        className="delete-btn-small"
+                                        onClick={() => deleteEntry(entry.id)}
+                                        aria-label="Eliminar"
+                                      >
+                                        ×
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </section>
@@ -507,57 +611,79 @@ function App() {
 
         <TabPanel>
           {filteredEntries.length === 0 ? (
-            <p className="empty-message">Ainda não há entradas registadas para este período.</p>
+            <p className="empty-message">
+              Ainda não há entradas registadas para este período.
+            </p>
           ) : (
             <section className="charts-section">
               <div className="chart-wrapper">
                 <h2>Quantidade de Entradas por Dia</h2>
                 <ResponsiveContainer width="100%" height={500}>
-                  <BarChart 
+                  <BarChart
                     data={chartDataEntriesPerDay}
                     margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                   >
                     <defs>
-                      <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#646cff" stopOpacity={0.9}/>
-                        <stop offset="95%" stopColor="#646cff" stopOpacity={0.6}/>
+                      <linearGradient
+                        id="colorGradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#646cff"
+                          stopOpacity={0.9}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#646cff"
+                          stopOpacity={0.6}
+                        />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                    <XAxis 
-                      dataKey="date" 
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(255, 255, 255, 0.1)"
+                    />
+                    <XAxis
+                      dataKey="date"
                       height={60}
                       stroke="rgba(255, 255, 255, 0.7)"
                       tick={{ fill: 'rgba(255, 255, 255, 0.8)', fontSize: 12 }}
                       tickLine={{ stroke: 'rgba(255, 255, 255, 0.3)' }}
                       interval="preserveStartEnd"
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="rgba(255, 255, 255, 0.7)"
                       tick={{ fill: 'rgba(255, 255, 255, 0.8)', fontSize: 12 }}
                       tickLine={{ stroke: 'rgba(255, 255, 255, 0.3)' }}
                     />
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{
                         backgroundColor: 'rgba(0, 0, 0, 0.9)',
                         border: '1px solid rgba(100, 108, 255, 0.5)',
                         borderRadius: '8px',
                         color: '#fff',
-                        padding: '10px'
+                        padding: '10px',
                       }}
                       labelStyle={{ color: '#646cff', fontWeight: 'bold' }}
                     />
-                    <Legend 
+                    <Legend
                       wrapperStyle={{ paddingTop: '20px' }}
                       iconType="rect"
                     />
-                    <Bar 
-                      dataKey="quantidade" 
+                    <Bar
+                      dataKey="quantidade"
                       name="Número de Entradas"
                       radius={[8, 8, 0, 0]}
                     >
                       {chartDataEntriesPerDay.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill="url(#colorGradient)" />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill="url(#colorGradient)"
+                        />
                       ))}
                     </Bar>
                   </BarChart>
@@ -568,7 +694,7 @@ function App() {
         </TabPanel>
       </Tabs>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

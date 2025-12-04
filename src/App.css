@@ -239,8 +239,8 @@ form {
   font-size: 0.9rem;
 }
 
-.form-group input[type="text"],
-.form-group input[type="datetime-local"],
+.form-group input[type='text'],
+.form-group input[type='datetime-local'],
 .form-group textarea {
   padding: 0.75rem;
   border-radius: 6px;
@@ -253,15 +253,15 @@ form {
   box-sizing: border-box;
 }
 
-.form-group input[type="text"]:focus,
-.form-group input[type="datetime-local"]:focus,
+.form-group input[type='text']:focus,
+.form-group input[type='datetime-local']:focus,
 .form-group textarea:focus {
   outline: none;
   border-color: #646cff;
   box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.1);
 }
 
-.form-group input[type="range"] {
+.form-group input[type='range'] {
   width: 100%;
   cursor: pointer;
 }
@@ -289,6 +289,56 @@ form {
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow-x: auto;
+}
+
+.weeks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.week-group {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(100, 108, 255, 0.15);
+}
+
+.week-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(
+    135deg,
+    rgba(100, 108, 255, 0.15) 0%,
+    rgba(100, 108, 255, 0.05) 100%
+  );
+  border-bottom: 1px solid rgba(100, 108, 255, 0.2);
+  flex-wrap: wrap;
+}
+
+.week-label {
+  font-weight: 700;
+  color: #646cff;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.week-dates {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+}
+
+.week-count {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
 }
 
 .table-wrapper {
@@ -441,6 +491,28 @@ form {
   .table-section,
   .charts-section {
     padding: 1rem;
+  }
+
+  .weeks-container {
+    gap: 1.5rem;
+  }
+
+  .week-header {
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .week-label {
+    font-size: 0.75rem;
+  }
+
+  .week-dates {
+    font-size: 0.9rem;
+  }
+
+  .week-count {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
   }
 
   .chart-wrapper {
